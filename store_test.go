@@ -42,7 +42,9 @@ func TestInMemoryStore_UpdateState(t *testing.T) {
 	ctx := context.Background()
 	store := NewInMemoryStore()
 
-	store.Save(ctx, &Account{ID: "test-2", State: StateCreated, Chain: ChainBitcoin})
+	if err := store.Save(ctx, &Account{ID: "test-2", State: StateCreated, Chain: ChainBitcoin}); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
 
 	if err := store.UpdateState(ctx, "test-2", StateFunded); err != nil {
 		t.Fatalf("UpdateState: %v", err)
@@ -62,9 +64,15 @@ func TestInMemoryStore_List(t *testing.T) {
 	ltc := ChainLitecoin
 	funded := StateFunded
 
-	store.Save(ctx, &Account{ID: "a1", State: StateCreated, Chain: ChainBitcoin})
-	store.Save(ctx, &Account{ID: "a2", State: StateFunded, Chain: ChainBitcoin})
-	store.Save(ctx, &Account{ID: "a3", State: StateFunded, Chain: ChainLitecoin})
+	for _, a := range []*Account{
+		{ID: "a1", State: StateCreated, Chain: ChainBitcoin},
+		{ID: "a2", State: StateFunded, Chain: ChainBitcoin},
+		{ID: "a3", State: StateFunded, Chain: ChainLitecoin},
+	} {
+		if err := store.Save(ctx, a); err != nil {
+			t.Fatalf("Save(%s): %v", a.ID, err)
+		}
+	}
 
 	tests := []struct {
 		name   string

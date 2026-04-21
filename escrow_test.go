@@ -126,7 +126,9 @@ func TestRegistry_DisputeFlow(t *testing.T) {
 		Chain:  ChainBitcoin,
 	})
 
-	reg.MarkFunded(ctx, account.ID, "tx-fund")
+	if err := reg.MarkFunded(ctx, account.ID, "tx-fund"); err != nil {
+		t.Fatalf("MarkFunded: %v", err)
+	}
 
 	if err := reg.Dispute(ctx, account.ID); err != nil {
 		t.Fatalf("Dispute: %v", err)

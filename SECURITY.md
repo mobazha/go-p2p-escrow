@@ -1,39 +1,33 @@
 # Security Policy
 
-## Reporting a Vulnerability
-
-If you discover a security vulnerability in go-p2p-escrow, **please do not open a public issue**.
-
-Instead, report it via email:
-
-**security@mobazha.org**
-
-Include:
-- Description of the vulnerability
-- Steps to reproduce
-- Potential impact assessment
-- Suggested fix (if any)
-
-We will acknowledge receipt within 48 hours and provide a timeline for a fix.
-
-## Scope
-
-The following are in scope:
-- State machine bypass (allowing invalid state transitions)
-- Fund loss scenarios (signatures accepted when they shouldn't be)
-- Key material leakage through API or logs
-- Denial of service on the Registry or Store
-
 ## Supported Versions
 
 | Version | Supported |
-|---|---|
-| latest (main branch) | ✅ |
-| tagged releases | ✅ |
+|---------|-----------|
+| 0.1.x   | ✅         |
 
-## Responsible Disclosure
+## Reporting a Vulnerability
 
-We follow a 90-day responsible disclosure timeline. We request that you:
-1. Allow us reasonable time to fix the issue before public disclosure
-2. Make a good faith effort to avoid data destruction or service disruption
-3. Do not access or modify other users' data
+If you discover a security vulnerability in `go-p2p-escrow`, please report it responsibly.
+
+**Do NOT open a public GitHub issue.**
+
+Instead, email **security@mobazha.org** with:
+
+1. A description of the vulnerability
+2. Steps to reproduce
+3. The potential impact
+4. Any suggested fix (optional)
+
+We will acknowledge receipt within 48 hours and aim to provide a fix within 7 days for critical issues.
+
+## Security Design Principles
+
+- **Key zeroing**: Private key material is overwritten in memory after use
+- **State machine enforcement**: All state transitions go through `StateMachine` to prevent fund loss
+- **Sentinel errors**: Error messages do not expose internal state
+- **No logging of secrets**: Private keys, mnemonics, and signing data are never logged
+
+## Scope
+
+This policy covers the `go-p2p-escrow` Go module. For vulnerabilities in the Mobazha platform, see [mobazha.org](https://mobazha.org).

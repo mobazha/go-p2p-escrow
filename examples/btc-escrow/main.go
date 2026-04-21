@@ -1,7 +1,7 @@
-// Example: Create a Bitcoin escrow and release funds to the seller.
+// Example: Create a Bitcoin P2WSH 2-of-3 multisig escrow.
 //
-// This demonstrates the full lifecycle in ~20 lines (excluding imports).
-// In production, replace InMemoryStore and provide a real UTXOWallet.
+// This demonstrates Setup → address generation in ~20 lines (excluding imports).
+// In production, add a ChainClient for on-chain verification and broadcast.
 package main
 
 import (
@@ -9,7 +9,10 @@ import (
 	"fmt"
 	"log"
 
+	btcec "github.com/btcsuite/btcd/btcec/v2"
+
 	escrow "github.com/mobazha/go-p2p-escrow"
+	"github.com/mobazha/go-p2p-escrow/adapters/utxo"
 )
 
 func main() {
@@ -17,27 +20,24 @@ func main() {
 	store := escrow.NewInMemoryStore()
 	registry := escrow.NewRegistry(store)
 
-	// Register your UTXO adapter (see adapters/utxo for the real one)
-	// registry.Register(escrow.ChainBitcoin, utxo.New(wallet, keyProvider))
+	adapter := utxo.NewAdapter(utxo.BitcoinRegtest)
+	registry.Register(escrow.ChainBitcoin, adapter)
+
+	buyer, _ := btcec.NewPrivateKey()
+	seller, _ := btcec.NewPrivateKey()
+	moderator, _ := btcec.NewPrivateKey()
 
 	account, err := registry.Setup(ctx, escrow.SetupParams{
-		Buyer:  escrow.Party{PublicKey: []byte("buyer-pub-key")},
-		Seller: escrow.Party{PublicKey: []byte("seller-pub-key")},
-		Amount: escrow.BTC(0.01),
-		Chain:  escrow.ChainBitcoin,
+		Buyer:     escrow.Party{PublicKey: buyer.PubKey().SerializeCompressed()},
+		Seller:    escrow.Party{PublicKey: seller.PubKey().SerializeCompressed()},
+		Moderator: &escrow.Party{PublicKey: moderator.PubKey().SerializeCompressed()},
+		Amount:    escrow.BTC(0.01),
+		Chain:     escrow.ChainBitcoin,
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Escrow created: %s at %s\n", account.ID, account.EscrowAddress)
-
-	// After the buyer funds the escrow address, release to the seller:
-	result, err := registry.Release(ctx, escrow.ReleaseParams{
-		AccountID: account.ID,
-		ToAddress: "bc1q-seller-address",
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("Released: tx %s\n", result.TxHash)
+	fmt.Printf("Escrow created: %s\n", account.ID)
+	fmt.Printf("Pay to (P2WSH): %s\n", account.EscrowAddress)
+	fmt.Printf("State: %s\n", account.State)
 }

@@ -1,6 +1,6 @@
 module github.com/mobazha/go-p2p-escrow
 
-go 1.25.0
+go 1.23.2
 
 require (
 	github.com/btcsuite/btcd v0.25.0

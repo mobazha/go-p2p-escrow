@@ -1,13 +1,15 @@
 # go-p2p-escrow
 
+[![CI](https://github.com/mobazha/go-p2p-escrow/actions/workflows/ci.yml/badge.svg)](https://github.com/mobazha/go-p2p-escrow/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/mobazha/go-p2p-escrow.svg)](https://pkg.go.dev/github.com/mobazha/go-p2p-escrow)
+[![Go Report Card](https://goreportcard.com/badge/github.com/mobazha/go-p2p-escrow)](https://goreportcard.com/report/github.com/mobazha/go-p2p-escrow)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 **Privacy-preserving, multi-chain P2P escrow SDK for Go.**
 
 Native UTXO multisig, Monero escrow, and multi-chain extensibility — without deploying smart contracts.
 
-> **Status:** API design complete (Sprint 0 ✅). UTXO adapter extraction in progress (Sprint 1).
+> **Status:** v0.1.0 — UTXO escrow for BTC/LTC/BCH/ZEC with P2WSH/P2SH multisig, BIP32 key derivation, and CSV timelock. 43 tests passing.
 
 ---
 
@@ -121,10 +123,10 @@ Created ──→ Funded ──→ Released ──→ Settled
 
 | Chain | Status | Mechanism | Adapter |
 |---|---|---|---|
-| Bitcoin (BTC) | 🔨 Sprint 1 | P2WSH 2-of-3 multisig | `adapters/utxo/` |
-| Litecoin (LTC) | 🔨 Sprint 1 | P2WSH 2-of-3 multisig | `adapters/utxo/` |
-| Bitcoin Cash (BCH) | 🔨 Sprint 1 | P2WSH 2-of-3 multisig | `adapters/utxo/` |
-| Zcash (ZEC) | 🔨 Sprint 1 | P2SH 2-of-3 multisig | `adapters/utxo/` |
+| Bitcoin (BTC) | ✅ v0.1.0 | P2WSH 2-of-3 multisig + CSV timelock | `adapters/utxo/` |
+| Litecoin (LTC) | ✅ v0.1.0 | P2WSH 2-of-3 multisig + CSV timelock | `adapters/utxo/` |
+| Bitcoin Cash (BCH) | ✅ v0.1.0 | P2SH 2-of-3 multisig | `adapters/utxo/` |
+| Zcash (ZEC) | ✅ v0.1.0 | P2SH 2-of-3 multisig | `adapters/utxo/` |
 | Monero (XMR) | 📋 Planned (v0.2) | Native 2-of-3 multisig | `adapters/monero/` |
 | Ethereum (ETH) | 📋 Planned (v0.3) | Safe Module | `adapters/evm/safe/` |
 | Solana (SOL) | 📋 Planned (v0.3) | Squads Protocol | `adapters/solana/squads/` |
@@ -176,9 +178,14 @@ go-p2p-escrow/
 │   └── chainclient.go # On-chain data (balance, tx info)
 │
 ├── adapters/
-│   └── utxo/          # BTC/LTC/BCH/ZEC P2WSH (Sprint 1)
+│   └── utxo/          # BTC/LTC/BCH/ZEC P2WSH/P2SH multisig + timelock
+│       ├── config.go  # Chain presets (BTC/LTC/BCH/ZEC mainnet/testnet/regtest)
+│       ├── escrow.go  # Adapter implementing Escrow interface
+│       ├── script.go  # M-of-N multisig script builder + address generation
+│       ├── timelock.go# CSV timelock scripts (OP_CHECKSEQUENCEVERIFY)
+│       └── tx.go      # Transaction building, witness signing, serialization
 │
-├── crypto/            # BIP32 escrow key derivation (Sprint 1)
+├── crypto/            # BIP32 escrow key derivation
 │
 └── examples/
     └── btc-escrow/    # Minimal working example

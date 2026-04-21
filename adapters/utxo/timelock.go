@@ -56,31 +56,47 @@ func IsTimelockScript(redeemScript []byte) bool {
 }
 
 // ParseTimelockSequence extracts the BIP 68 sequence value from a timelock
-// redeem script. Returns an error if the script is not a valid timelock.
+// redeem script. It dynamically locates the OP_ELSE opcode rather than
+// relying on a fixed offset, so it works with any M-of-N configuration.
 func ParseTimelockSequence(redeemScript []byte) (uint32, error) {
-	if len(redeemScript) < 113 {
-		return 0, errors.New("redeem script too short for timelock")
-	}
-	// After the IF branch: threshold(1) + nPubs*34 + nTotal(1) + OP_CHECKMULTISIG(1) + OP_ELSE(1)
-	// For 2-of-3: 1 + 3*34 + 1 + 1 + 1 = 106 → OP_ELSE at index 106
-	if redeemScript[106] != txscript.OP_ELSE {
-		return 0, errors.New("OP_ELSE not at expected position")
+	if !IsTimelockScript(redeemScript) {
+		return 0, errors.New("not a timelock script")
 	}
 
-	opcode := redeemScript[107]
+	elseIdx := -1
+	for i := 1; i < len(redeemScript); i++ {
+		if redeemScript[i] == txscript.OP_ELSE {
+			elseIdx = i
+			break
+		}
+		// Skip data pushes to avoid false positives.
+		if redeemScript[i] >= 1 && redeemScript[i] <= 75 {
+			i += int(redeemScript[i])
+		}
+	}
+	if elseIdx < 0 || elseIdx+1 >= len(redeemScript) {
+		return 0, errors.New("OP_ELSE not found in timelock script")
+	}
+
+	seqIdx := elseIdx + 1
+	opcode := redeemScript[seqIdx]
+
 	if opcode == 0 {
 		return 0, nil
 	}
-	if opcode >= 81 && opcode <= 96 {
+	if opcode >= 81 && opcode <= 96 { // OP_1 through OP_16
 		return uint32(opcode-81) + 1, nil
 	}
-
 	if opcode < 1 || opcode > 75 {
-		return 0, errors.New("too many bytes pushed for sequence")
+		return 0, fmt.Errorf("unexpected opcode 0x%02x after OP_ELSE", opcode)
+	}
+
+	if seqIdx+1+int(opcode) > len(redeemScript) {
+		return 0, errors.New("script too short to contain sequence data")
 	}
 	var result int64
 	for i := 0; i < int(opcode); i++ {
-		result |= int64(redeemScript[108+i]) << uint8(8*i)
+		result |= int64(redeemScript[seqIdx+1+i]) << uint8(8*i)
 	}
 	return uint32(result), nil
 }

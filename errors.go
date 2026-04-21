@@ -28,4 +28,8 @@ var (
 
 	// ErrTimeout is returned when the escrow has expired.
 	ErrTimeout = errors.New("escrow: timeout expired")
+
+	// ErrNotImplemented is returned when a method is not yet implemented
+	// in the current adapter version.
+	ErrNotImplemented = errors.New("escrow: not implemented")
 )

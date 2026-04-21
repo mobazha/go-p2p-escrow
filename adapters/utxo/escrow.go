@@ -121,31 +121,39 @@ func (a *Adapter) VerifyFunding(ctx context.Context, account *escrow.Account, pa
 
 // Release builds a spending transaction paying the seller, collects the
 // provided signatures, and broadcasts.
+//
+// NOTE (v0.1): The full UTXO query → tx build → broadcast pipeline is
+// stubbed. Use the lower-level [BuildUnsignedTx] + [SignWitness] +
+// [AssembleWitnessMultisig] + [SerializeTx] functions for production flows.
 func (a *Adapter) Release(ctx context.Context, account *escrow.Account, params escrow.ReleaseParams) (*escrow.ReleaseResult, error) {
 	return a.spend(ctx, account, params.ToAddress, params.Signatures)
 }
 
 // Refund builds a spending transaction paying the buyer, collects the
 // provided signatures, and broadcasts.
+//
+// NOTE (v0.1): See [Release] for v0.1 limitations.
 func (a *Adapter) Refund(ctx context.Context, account *escrow.Account, params escrow.RefundParams) (*escrow.ReleaseResult, error) {
 	return a.spend(ctx, account, params.ToAddress, params.Signatures)
 }
 
 // Sign produces this party's signatures for the escrow spending transaction.
+//
+// NOTE (v0.1): This high-level method is not yet implemented because it
+// requires UTXO query capability. Use [SignWitness] directly with the
+// unsigned transaction for full signing control.
 func (a *Adapter) Sign(_ context.Context, account *escrow.Account, params escrow.SignParams) ([]escrow.Signature, error) {
 	privKey, _ := btcec.PrivKeyFromBytes(params.PrivateKey)
 	if privKey == nil {
 		return nil, fmt.Errorf("invalid private key")
 	}
+	defer zeroKey(privKey)
 
 	if a.client == nil {
 		return nil, fmt.Errorf("chain client required for signing (need UTXOs)")
 	}
 
-	// For a full implementation, we'd query UTXOs and build the unsigned tx.
-	// For now, return an error indicating the consumer should use the
-	// lower-level SignWitness function with transaction details.
-	return nil, fmt.Errorf("Sign via Registry not yet implemented; use utxo.SignWitness directly")
+	return nil, escrow.ErrNotImplemented
 }
 
 // EstimateFee estimates the on-chain fee for an escrow release.
@@ -215,6 +223,14 @@ func estimateMultisigTxSize(nIn, nOut, threshold int) int {
 	redeemScriptSize := 4 + (threshold+1)*34
 	inputSize := 1 + threshold*66 + redeemScriptSize
 	return 8 + 1 + nIn*inputSize + 1 + nOut*34
+}
+
+// zeroKey overwrites a private key's scalar bytes with zeros.
+func zeroKey(key *btcec.PrivateKey) {
+	b := key.Serialize()
+	for i := range b {
+		b[i] = 0
+	}
 }
 
 // DeriveEscrowPublicKey re-exports the crypto function for convenience.

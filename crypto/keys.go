@@ -2,6 +2,8 @@
 package crypto
 
 import (
+	"fmt"
+
 	btcec "github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -42,14 +44,18 @@ func DeriveEscrowPrivateKey(masterPriv *btcec.PrivateKey, chaincode []byte) (*bt
 	return child.ECPrivKey()
 }
 
+const maxChildDerivationAttempts = 100
+
 // deriveFirstValidChild derives child 0. If child 0 is invalid (rare edge
-// case in BIP32), it increments until a valid child is found.
+// case in BIP32), it increments until a valid child is found, up to a
+// maximum of 100 attempts to prevent infinite loops with invalid keys.
 func deriveFirstValidChild(parent *hdkeychain.ExtendedKey) (*hdkeychain.ExtendedKey, error) {
-	for i := uint32(0); ; i++ {
+	for i := uint32(0); i < maxChildDerivationAttempts; i++ {
 		child, err := parent.Derive(i)
 		if err != nil {
 			continue
 		}
 		return child, nil
 	}
+	return nil, fmt.Errorf("failed to derive valid child key after %d attempts", maxChildDerivationAttempts)
 }

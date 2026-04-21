@@ -37,8 +37,7 @@ func NewInMemoryStore() *InMemoryStore {
 func (s *InMemoryStore) Save(_ context.Context, account *Account) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	cp := *account
-	s.accounts[account.ID] = &cp
+	s.accounts[account.ID] = deepCopyAccount(account)
 	return nil
 }
 
@@ -49,8 +48,30 @@ func (s *InMemoryStore) Get(_ context.Context, id string) (*Account, error) {
 	if !ok {
 		return nil, ErrNotFound
 	}
+	return deepCopyAccount(a), nil
+}
+
+func deepCopyAccount(a *Account) *Account {
 	cp := *a
-	return &cp, nil
+	cp.RedeemScript = copyBytes(a.RedeemScript)
+	cp.Chaincode = copyBytes(a.Chaincode)
+	cp.Parties.Buyer.PublicKey = copyBytes(a.Parties.Buyer.PublicKey)
+	cp.Parties.Seller.PublicKey = copyBytes(a.Parties.Seller.PublicKey)
+	if a.Parties.Moderator != nil {
+		mod := *a.Parties.Moderator
+		mod.PublicKey = copyBytes(a.Parties.Moderator.PublicKey)
+		cp.Parties.Moderator = &mod
+	}
+	return &cp
+}
+
+func copyBytes(b []byte) []byte {
+	if b == nil {
+		return nil
+	}
+	cp := make([]byte, len(b))
+	copy(cp, b)
+	return cp
 }
 
 func (s *InMemoryStore) List(_ context.Context, filter ListFilter) ([]*Account, error) {

@@ -1,7 +1,9 @@
 package escrow
 
 // EscrowState represents a point in the escrow lifecycle.
-type EscrowState = string
+// It is a named type (not a string alias) so the compiler rejects
+// arbitrary strings — only the State* constants are valid.
+type EscrowState string
 
 const (
 	StateCreated  EscrowState = "created"

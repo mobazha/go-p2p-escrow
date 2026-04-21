@@ -60,7 +60,7 @@ func TestInMemoryStore_List(t *testing.T) {
 
 	btc := ChainBitcoin
 	ltc := ChainLitecoin
-	funded := EscrowState(StateFunded)
+	funded := StateFunded
 
 	store.Save(ctx, &Account{ID: "a1", State: StateCreated, Chain: ChainBitcoin})
 	store.Save(ctx, &Account{ID: "a2", State: StateFunded, Chain: ChainBitcoin})
@@ -104,5 +104,34 @@ func TestInMemoryStore_IsolatesMutations(t *testing.T) {
 	check, _ := store.Get(ctx, "iso-1")
 	if check.State != StateCreated {
 		t.Error("Store returned a reference instead of a copy; mutations leak")
+	}
+}
+
+func TestInMemoryStore_DeepCopyBytes(t *testing.T) {
+	ctx := context.Background()
+	store := NewInMemoryStore()
+
+	original := &Account{
+		ID:           "deep-1",
+		State:        StateCreated,
+		Chain:        ChainBitcoin,
+		RedeemScript: []byte{0x01, 0x02, 0x03},
+		Parties: Parties{
+			Buyer:  Party{PublicKey: []byte{0xaa, 0xbb}},
+			Seller: Party{PublicKey: []byte{0xcc, 0xdd}},
+		},
+	}
+	store.Save(ctx, original)
+
+	got, _ := store.Get(ctx, "deep-1")
+	got.RedeemScript[0] = 0xff
+	got.Parties.Buyer.PublicKey[0] = 0xff
+
+	check, _ := store.Get(ctx, "deep-1")
+	if check.RedeemScript[0] != 0x01 {
+		t.Error("RedeemScript byte slice was not deep-copied")
+	}
+	if check.Parties.Buyer.PublicKey[0] != 0xaa {
+		t.Error("Buyer.PublicKey byte slice was not deep-copied")
 	}
 }

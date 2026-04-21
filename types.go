@@ -1,6 +1,7 @@
 package escrow
 
 import (
+	"fmt"
 	"math/big"
 	"time"
 )
@@ -56,6 +57,24 @@ func (a Amount) String() string { return a.v.String() }
 
 // IsZero reports whether the amount is zero.
 func (a Amount) IsZero() bool { return a.v.Sign() == 0 }
+
+// MarshalJSON encodes the Amount as a JSON string (decimal).
+func (a Amount) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + a.v.String() + `"`), nil
+}
+
+// UnmarshalJSON decodes a JSON string into an Amount.
+func (a *Amount) UnmarshalJSON(data []byte) error {
+	s := string(data)
+	if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
+		s = s[1 : len(s)-1]
+	}
+	_, ok := a.v.SetString(s, 10)
+	if !ok {
+		return fmt.Errorf("escrow: invalid amount %q", string(data))
+	}
+	return nil
+}
 
 // SetupParams defines the escrow arrangement to create.
 type SetupParams struct {

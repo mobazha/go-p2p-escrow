@@ -167,6 +167,130 @@ func (r *Registry) Refund(ctx context.Context, params RefundParams) (*ReleaseRes
 	return result, nil
 }
 
+// MarkFunded transitions the escrow to funded state after confirming payment.
+func (r *Registry) MarkFunded(ctx context.Context, accountID string, txHash string) error {
+	account, err := r.store.Get(ctx, accountID)
+	if err != nil {
+		return err
+	}
+
+	prev := account.State
+	if err := r.sm.Transition(account, StateFunded); err != nil {
+		return err
+	}
+
+	if err := r.store.UpdateState(ctx, account.ID, StateFunded); err != nil {
+		return fmt.Errorf("persist state: %w", err)
+	}
+
+	r.handler.OnStateChanged(account, prev, StateFunded)
+	r.handler.OnFunded(account, txHash)
+	return nil
+}
+
+// Dispute transitions the escrow to disputed state.
+func (r *Registry) Dispute(ctx context.Context, accountID string) error {
+	account, err := r.store.Get(ctx, accountID)
+	if err != nil {
+		return err
+	}
+
+	prev := account.State
+	if err := r.sm.Transition(account, StateDisputed); err != nil {
+		return err
+	}
+
+	if err := r.store.UpdateState(ctx, account.ID, StateDisputed); err != nil {
+		return fmt.Errorf("persist state: %w", err)
+	}
+
+	r.handler.OnStateChanged(account, prev, StateDisputed)
+	r.handler.OnDisputed(account)
+	return nil
+}
+
+// MarkExpired transitions the escrow to expired state.
+func (r *Registry) MarkExpired(ctx context.Context, accountID string) error {
+	account, err := r.store.Get(ctx, accountID)
+	if err != nil {
+		return err
+	}
+
+	prev := account.State
+	if err := r.sm.Transition(account, StateExpired); err != nil {
+		return err
+	}
+
+	if err := r.store.UpdateState(ctx, account.ID, StateExpired); err != nil {
+		return fmt.Errorf("persist state: %w", err)
+	}
+
+	r.handler.OnStateChanged(account, prev, StateExpired)
+	r.handler.OnExpired(account)
+	return nil
+}
+
+// Sign produces this party's signatures for a release or refund transaction
+// via the appropriate chain adapter.
+func (r *Registry) Sign(ctx context.Context, params SignParams) ([]Signature, error) {
+	account, err := r.store.Get(ctx, params.AccountID)
+	if err != nil {
+		return nil, err
+	}
+
+	adapter, err := r.adapterFor(account.Chain)
+	if err != nil {
+		return nil, err
+	}
+
+	return adapter.Sign(ctx, account, params)
+}
+
+// FundingInfo returns the payment instructions for a given escrow account.
+func (r *Registry) FundingInfo(ctx context.Context, accountID string) (*FundingInstructions, error) {
+	account, err := r.store.Get(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	adapter, err := r.adapterFor(account.Chain)
+	if err != nil {
+		return nil, err
+	}
+
+	return adapter.FundingInfo(account)
+}
+
+// VerifyFunding checks whether the escrow has been funded.
+func (r *Registry) VerifyFunding(ctx context.Context, params VerifyParams) (bool, error) {
+	account, err := r.store.Get(ctx, params.AccountID)
+	if err != nil {
+		return false, err
+	}
+
+	adapter, err := r.adapterFor(account.Chain)
+	if err != nil {
+		return false, err
+	}
+
+	return adapter.VerifyFunding(ctx, account, params)
+}
+
+// EstimateFee estimates the on-chain fee for an escrow operation on the given chain.
+func (r *Registry) EstimateFee(ctx context.Context, chain ChainType, params FeeParams) (Amount, error) {
+	adapter, err := r.adapterFor(chain)
+	if err != nil {
+		return Amount{}, err
+	}
+
+	return adapter.EstimateFee(ctx, params)
+}
+
+// Get retrieves an escrow account by ID.
+func (r *Registry) Get(ctx context.Context, id string) (*Account, error) {
+	return r.store.Get(ctx, id)
+}
+
 func (r *Registry) adapterFor(chain ChainType) (Escrow, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

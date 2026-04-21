@@ -104,7 +104,9 @@ func TestInMemoryStore_IsolatesMutations(t *testing.T) {
 	store := NewInMemoryStore()
 
 	original := &Account{ID: "iso-1", State: StateCreated, Chain: ChainBitcoin}
-	store.Save(ctx, original)
+	if err := store.Save(ctx, original); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
 
 	got, _ := store.Get(ctx, "iso-1")
 	got.State = StateFunded
@@ -129,7 +131,9 @@ func TestInMemoryStore_DeepCopyBytes(t *testing.T) {
 			Seller: Party{PublicKey: []byte{0xcc, 0xdd}},
 		},
 	}
-	store.Save(ctx, original)
+	if err := store.Save(ctx, original); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
 
 	got, _ := store.Get(ctx, "deep-1")
 	got.RedeemScript[0] = 0xff
